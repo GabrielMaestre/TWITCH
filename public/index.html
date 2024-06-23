@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="style.css">
+    <!-- <script src="https://cdn.socket.io/4.7.5/socket.io.min.js" integrity="sha384-2huaZvOR9iDzHqslqwpR87isEmrfxqyWOF7hr7BY6KG0+hVKLoEXMPUJw3ynWuhO" crossorigin="anonymous"></script> -->
+     <!-- <script src="./socket.io.min.js"></script> -->
+    <title>Jogo do Canto da Tela</title>
+</head>
+<body>
+    
+    <h3>Joga com nóis, link Fixado!</h3>
+    
+    <div id="game" class="borda">
+        
+        <!-- <img src="https://cdn.discordapp.com/attachments/1252679701651259413/1253840092204630236/image.png?ex=6677f9d5&is=6676a855&hm=135d4005e262b4af69473d378d661faec0696cef6d08339ec4f4301569a4c9c3&" alt=""> -->
+        
+        <div id="playerBase" class="playerBase">
+            <div class="rainbow-image" id="playerBackground">
+                <img id="playerImage" class="rainbow-image" src="./dvd.png"></img>
+            </div>
+        </div>
+        
+    </div>
+    
+    <div>
+        <br>
+        <button onclick="document.getElementById('log').innerText = ''">CLEAR</button>
+        <br>
+    </div>
+
+    <div class="borda" name="LOG">
+        <textarea rows="2" cols="60" id="log"></textarea>
+    </div>
+
+    <script src="./socket.io.min.js"></script>
+
+    <script defer>
+        
+        const socket = io();
+
+        const pBase = document.getElementById("playerBase");
+        const player = pBase.cloneNode(true);
+        player.id = "player";
+        let playerList = [];
+        document.getElementById("game").appendChild(player);
+        const logTxt = document.getElementById('log');
+
+        function log(msg) {
+            logTxt.innerHTML += '\n' + msg;
+        }
+
+        const pxMovement = 10;
+        const maxSizeW = 700;
+        const maxSizeH = 560;
+
+        socket.on("connect", async (serverId) => {
+            if(socket.id != serverId) {
+                console.log('connect', socket.id, '  ', serverId);
+                await newPlayer(socket.id);
+                // player.classList.remove("playerBase");
+                // player.name = socket.id;
+                // player.style.left = 0;
+                // player.style.top = 0;
+                console.log('MeId', socket.id);
+            }
+
+            // Start Game Logic & Fuctions
+            start();
+        });
+
+        socket.on("newPlayer", async (serverId) => {
+            console.log('newPlayer', socket.id, serverId);
+            if(serverId != socket.id)
+                await newPlayer(serverId);
+        });
+        
+        socket.on("playerLeave", async (serverId) => {
+            if(serverId != socket.id)
+                await disconnectPlayer(serverId);
+        });
+
+
+        async function disconnectPlayer(playerId) {
+            let playerObj = playerList.find(x => x.id == playerId);
+            if(playerObj) {
+                playerObj.obj.remove();
+                playerList = playerList.filter(x => x.id!= playerId);
+            }
+        }
+
+        async function newPlayer(playerId) {
+            // pBase.remove();
+            let tempPlayer = pBase.cloneNode(true);
+            tempPlayer.classList.remove("playerBase");
+            tempPlayer.id = "player";
+            tempPlayer.name = playerId;
+            tempPlayer.style.left = 0;
+            tempPlayer.style.top = 0;
+            document.getElementById("game").appendChild(tempPlayer);
+            playerList.push({id: playerId, obj: tempPlayer});
+            console.log('PlayerId', playerId);
+        }
+
+        async function multiplayerMoveEmit(data) {
+            socket.emit('multiplayerMove', data);
+            console.log("SEND MOVE FROM:", data.id);
+        }
+
+        socket.on('multiplayerMove', async (data) => {
+            if(data.id == socket.id)
+                console.log('IGUAL!!!!!!!!!!!!!!!');
+            console.log("RECIVE MOVE FROM:", data);
+        });
+
+        // Movement Logic
+        document.onkeydown = async function (e) {
+            let canMove = false;
+                switch (e.key) {
+                    case "ArrowLeft":
+                        if(parseInt(player.style.left) <= 0) {
+                            canMove = false;
+                            return log('PLAYER CANT MOVE');
+                        }
+                        canMove = true;
+                        player.style.left = parseInt(player.style.left || 0) - pxMovement + 'px';
+                        log('Moved left ' + pxMovement + 'px');
+                        break;
+
+                    case "ArrowUp":
+                        if(parseInt(player.style.top) <= 0) {
+                            canMove = false;
+                            return log('PLAYER CANT MOVE');
+                        }
+                        canMove = true;
+                        player.style.top = parseInt(player.style.top || 0) - pxMovement + 'px';
+                        log('Moved up ' + pxMovement + 'px');
+                        break;
+
+                    case "ArrowRight":
+                        if(parseInt(player.style.left) >= maxSizeW) {
+                            canMove = false;
+                            return log('PLAYER CANT MOVE');
+                        }
+                        canMove = true;
+                        player.style.left = parseInt(player.style.left || 0) + pxMovement + 'px';
+                        log('Moved right ' + pxMovement + 'px');
+                        break;
+
+                    case "ArrowDown":
+                        if(parseInt(player.style.top) >= maxSizeH) {
+                            canMove = false;
+                            return log('PLAYER CANT MOVE');
+                        }
+                        canMove = true;
+                        player.style.top = parseInt(player.style.top || 0) + pxMovement + 'px';
+                        log('Moved down ' + pxMovement + 'px');
+                        break;
+
+                    default: return;
+                }
+                log('Player Position > ' + player.style.left + ' | ' + player.style.top);
+                if(canMove == true) {
+                    console.log('Iniciando Emição...');
+                    await multiplayerMoveEmit({id: player.name, move: {x: player.style.left, y: player.style.top} });
+                }
+                e.preventDefault();
+            };
+
+        async function start() {
+            await log('Starting Script...');
+
+            const game = document.getElementById('game');
+
+            // Random Quina
+            // quinaMove();
+        }
+
+        let mbaixo = true;
+        let mlado = true;
+        async function quinaMove() {
+            console.log('quinamove');
+            // await setInterval(async () => {
+            //     player.style.left = parseInt(player.style.left || 0) + parseInt(pxMovement/5) + 'px';
+            // }, 10);
+
+            await setInterval(async () => {
+                if (mlado === true && parseInt(player.style.left) <= maxSizeW) {
+                    player.style.left = parseInt(player.style.left || 0) + parseInt(pxMovement / 5) + 'px';
+                }
+                else if(parseInt(player.style.left) <= 0) {
+                    mlado = true;
+                    player.style.left = parseInt(player.style.left || 0) - parseInt(pxMovement / 5) + 'px';
+                }
+                else {
+                    mlado = false;
+                    player.style.left = parseInt(player.style.left || 0) - parseInt(pxMovement / 5) + 'px';
+                }
+            }, 10);
+
+            await setInterval(async () => {
+                if (mbaixo === true && parseInt(player.style.top) <= maxSizeH) {
+                    player.style.top = parseInt(player.style.top || 0) + parseInt(pxMovement / 5) + 'px';
+                }
+                else if(parseInt(player.style.top) <= 0) {
+                    mbaixo = true;
+                    player.style.top = parseInt(player.style.top || 0) - parseInt(pxMovement / 5) + 'px';
+                }
+                else {
+                    mbaixo = false;
+                    player.style.top = parseInt(player.style.top || 0) - parseInt(pxMovement / 5) + 'px';
+                    // blink();
+                }
+            }, 10);
+        }
+
+        async function blink() {
+            const playerBackground = player.getElementById('playerBackground');
+            playerBackground.classList.add('changeColor');
+            setTimeout(() => {
+                playerBackground.classList.remove('changeColor');
+            }, 1000);
+        }
+    </script>
+    
+</body>
+</html>
