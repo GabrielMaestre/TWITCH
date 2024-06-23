@@ -16,6 +16,8 @@ app.get('/', function (req, res) {
 io.on('connection', (socket) => {
   console.log('User Join:', socket.id);
 
+  io.emit('newPlayer', socket.id);
+
   socket.on('multiplayerMove', (data) => {
       io.emit('multiplayerMove', data);
   });
