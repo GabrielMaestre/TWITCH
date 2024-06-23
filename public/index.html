@@ -114,16 +114,28 @@
             console.log('PlayerId', playerId);
         }
 
+        // SEND MOVE
         async function multiplayerMoveEmit(data) {
             socket.emit('multiplayerMove', data);
             console.log("SEND MOVE FROM:", data.id);
         }
 
+        // RECIVE MOVE
         socket.on('multiplayerMove', async (data) => {
-            if(data.id == socket.id)
-                console.log('IGUAL!!!!!!!!!!!!!!!');
+            if(data.id != socket.id) {
+                await updateLocation(data);
+            }
             console.log("RECIVE MOVE FROM:", data);
         });
+
+        // MOVE MULTIPLAYER PLAYER
+        async function updateLocation(data) {
+            let playerObj = playerList.find(x => x.id == data.id).obj;
+            if(playerObj) {
+                playerObj.style.left = data.move.x;
+                playerObj.style.top = data.move.y;
+            }
+        }
 
         // Movement Logic
         document.onkeydown = async function (e) {

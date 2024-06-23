@@ -30,4 +30,5 @@ io.on('connection', (socket) => {
 
 server.listen(3000, () => {
     console.log(`[NODE] Server Started`);
+    console.log('http://localhost:3000');
 });
