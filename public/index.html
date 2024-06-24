@@ -4,8 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="style.css">
-    <!-- <script src="https://cdn.socket.io/4.7.5/socket.io.min.js" integrity="sha384-2huaZvOR9iDzHqslqwpR87isEmrfxqyWOF7hr7BY6KG0+hVKLoEXMPUJw3ynWuhO" crossorigin="anonymous"></script> -->
-     <!-- <script src="./socket.io.min.js"></script> -->
     <title>Jogo do Canto da Tela</title>
 </head>
 <body>
@@ -14,11 +12,10 @@
     
     <div id="game" class="borda">
         
-        <!-- <img src="https://cdn.discordapp.com/attachments/1252679701651259413/1253840092204630236/image.png?ex=6677f9d5&is=6676a855&hm=135d4005e262b4af69473d378d661faec0696cef6d08339ec4f4301569a4c9c3&" alt=""> -->
-        
         <div id="playerBase" class="playerBase">
+            <span style="color: white;font-size: 15px;" id="playerNick">PLAYER</span>
             <div class="rainbow-image" id="playerBackground">
-                <img id="playerImage" class="rainbow-image" src="./dvd.png"></img>
+                <img id="playerImage" class="rainbow-image" draggable="false" src="./dvdv1_2.png"></img>
             </div>
         </div>
         
@@ -27,6 +24,7 @@
     <div>
         <br>
         <button onclick="document.getElementById('log').innerText = ''">CLEAR</button>
+        <button onclick="socket.disconnect()">DISCONNECT</button>
         <br>
     </div>
 
@@ -52,38 +50,34 @@
         }
 
         const pxMovement = 10;
+        const pxMovementAuto = 10;
         const maxSizeW = 700;
         const maxSizeH = 560;
+        const offsetX = 480;
+        const offsetY = 120;
+        let firstJoin = true;
 
         socket.on("connect", async (serverId) => {
-            // if(socket.id != serverId) {
-            //     console.log('connect', socket.id, '  ', serverId);
-            //     await newPlayer(socket.id);
-            //     console.log('MeId', socket.id);
-            // } else {
-            //     player.classList.remove("playerBase");
-            //     player.name = socket.id;
-            //     player.style.left = 0;
-            //     player.style.top = 0;
-            // }
-
             // Start Game Logic & Fuctions
-            start();
+            console.log('Starting on Connect');
+            await start();
         });
 
-        socket.on("newPlayer", async (serverId) => {
-            console.log('newPlayer', socket.id, serverId);
-            if(serverId != socket.id) {
-                await newPlayer(serverId);
-                console.log('PLAYER AGORA ->', socket.id, serverId);
-            } else {
-                console.log('PLAYER AGORA IGUAL ->', socket.id, serverId);
-                // await newPlayer(socket.id);
-                console.log('MeId', socket.id);
-                player.classList.remove("playerBase");
-                player.name = socket.id;
-                player.style.left = 0;
-                player.style.top = 0;
+        socket.on("newPlayer", async (players) => {
+            console.log('Initial Players:', players);
+
+            for (const playerId of players) {
+                if(playerId != socket.id) {
+                    await newPlayer(playerId);
+                } else if (firstJoin === true) {
+                    firstJoin = false;
+                    console.log('MeId', socket.id);
+                    player.querySelector('#playerNick').innerHTML = (socket.id).slice(-10);
+                    player.classList.remove("playerBase");
+                    player.name = socket.id;
+                    player.style.left = '480px';
+                    player.style.top = '120px';
+                }
             }
         });
         
@@ -91,7 +85,6 @@
             if(serverId != socket.id)
                 await disconnectPlayer(serverId);
         });
-
 
         async function disconnectPlayer(playerId) {
             let playerObj = playerList.find(x => x.id == playerId);
@@ -102,22 +95,22 @@
         }
 
         async function newPlayer(playerId) {
-            // pBase.remove();
-            let tempPlayer = pBase.cloneNode(true);
+            let tempPlayer = await pBase.cloneNode(true);
             tempPlayer.classList.remove("playerBase");
             tempPlayer.id = "player";
             tempPlayer.name = playerId;
-            tempPlayer.style.left = 0;
-            tempPlayer.style.top = 0;
-            document.getElementById("game").appendChild(tempPlayer);
+            tempPlayer.style.left = 0 + offsetX;
+            tempPlayer.style.top = 0 + offsetY;
+            await document.getElementById("game").appendChild(tempPlayer);
             playerList.push({id: playerId, obj: tempPlayer});
             console.log('PlayerId', playerId);
         }
 
         // SEND MOVE
-        async function multiplayerMoveEmit(data) {
-            socket.emit('multiplayerMove', data);
-            console.log("SEND MOVE FROM:", data.id);
+        async function multiplayerMoveEmit() {
+            const tempData = {id: player.name, move: {x: player.style.left, y: player.style.top} };
+            console.log("SEND MOVE FROM:", tempData.id);
+            await socket.emit('multiplayerMove', tempData);
         }
 
         // RECIVE MOVE
@@ -130,6 +123,7 @@
 
         // MOVE MULTIPLAYER PLAYER
         async function updateLocation(data) {
+            // console.log('UpdateLocation >', data);
             let playerObj = playerList.find(x => x.id == data.id).obj;
             if(playerObj) {
                 playerObj.style.left = data.move.x;
@@ -142,17 +136,17 @@
             let canMove = false;
                 switch (e.key) {
                     case "ArrowLeft":
-                        if(parseInt(player.style.left) <= 0) {
+                        if(parseInt(player.style.left) <= 0 + offsetX) {
                             canMove = false;
                             return log('PLAYER CANT MOVE');
                         }
                         canMove = true;
-                        player.style.left = parseInt(player.style.left || 0) - pxMovement + 'px';
+                        player.style.left = parseInt(player.style.left || 20) - pxMovement + 'px';
                         log('Moved left ' + pxMovement + 'px');
                         break;
 
                     case "ArrowUp":
-                        if(parseInt(player.style.top) <= 0) {
+                        if(parseInt(player.style.top) <= 0 + offsetY - 20) {
                             canMove = false;
                             return log('PLAYER CANT MOVE');
                         }
@@ -162,7 +156,7 @@
                         break;
 
                     case "ArrowRight":
-                        if(parseInt(player.style.left) >= maxSizeW) {
+                        if(parseInt(player.style.left) >= maxSizeW + offsetX - 20) {
                             canMove = false;
                             return log('PLAYER CANT MOVE');
                         }
@@ -172,7 +166,7 @@
                         break;
 
                     case "ArrowDown":
-                        if(parseInt(player.style.top) >= maxSizeH) {
+                        if(parseInt(player.style.top) >= maxSizeH + offsetY - 40) {
                             canMove = false;
                             return log('PLAYER CANT MOVE');
                         }
@@ -185,8 +179,8 @@
                 }
                 log('Player Position > ' + player.style.left + ' | ' + player.style.top);
                 if(canMove == true) {
-                    console.log('Iniciando Emição...');
-                    await multiplayerMoveEmit({id: player.name, move: {x: player.style.left, y: player.style.top} });
+                    // await multiplayerMoveEmit({id: player.name, move: {x: player.style.left, y: player.style.top} });
+                    await multiplayerMoveEmit();
                 }
                 e.preventDefault();
             };
@@ -194,48 +188,63 @@
         async function start() {
             await log('Starting Script...');
 
-            const game = document.getElementById('game');
+            const game = await document.getElementById('game');
+
+            // Random Spawn
+            await randomSpawn();
 
             // Random Quina
-            // quinaMove();
+            await quinaMove();
+
+            // Update Player Location Initial
+            await setTimeout(async () => {
+                await multiplayerMoveEmit();
+            }, 500);
+        }
+
+        async function randomSpawn() {
+            let randomX = await Math.floor(Math.random() * (maxSizeW - 40) + offsetX+40);
+            let randomY = await Math.floor(Math.random() * (maxSizeH - 40) + offsetY+40);
+            player.style.left = randomX + 'px';
+            player.style.top = randomY + 'px';
+            await log('Random Spawn >'+ randomX +'|'+ randomY);
+            await setTimeout(async () => {
+                await multiplayerMoveEmit();
+            }, 200);
         }
 
         let mbaixo = true;
         let mlado = true;
         async function quinaMove() {
             console.log('quinamove');
-            // await setInterval(async () => {
-            //     player.style.left = parseInt(player.style.left || 0) + parseInt(pxMovement/5) + 'px';
-            // }, 10);
 
             await setInterval(async () => {
-                if (mlado === true && parseInt(player.style.left) <= maxSizeW) {
-                    player.style.left = parseInt(player.style.left || 0) + parseInt(pxMovement / 5) + 'px';
+                if (mlado === true && parseInt(player.style.left) <= maxSizeW + offsetX - 20) {
+                    player.style.left = parseInt(player.style.left || 0) + parseInt(pxMovementAuto) + 'px';
                 }
-                else if(parseInt(player.style.left) <= 0) {
+                else if(parseInt(player.style.left) <= 0 + offsetX) {
                     mlado = true;
-                    player.style.left = parseInt(player.style.left || 0) - parseInt(pxMovement / 5) + 'px';
+                    player.style.left = parseInt(player.style.left || 0) - parseInt(pxMovementAuto) + 'px';
                 }
                 else {
                     mlado = false;
-                    player.style.left = parseInt(player.style.left || 0) - parseInt(pxMovement / 5) + 'px';
+                    player.style.left = parseInt(player.style.left || 0) - parseInt(pxMovementAuto) + 'px';
                 }
-            }, 10);
 
-            await setInterval(async () => {
-                if (mbaixo === true && parseInt(player.style.top) <= maxSizeH) {
-                    player.style.top = parseInt(player.style.top || 0) + parseInt(pxMovement / 5) + 'px';
+                if (mbaixo === true && parseInt(player.style.top) <= maxSizeH + offsetY - 20) {
+                    player.style.top = parseInt(player.style.top || 0) + parseInt(pxMovementAuto) + 'px';
                 }
-                else if(parseInt(player.style.top) <= 0) {
+                else if(parseInt(player.style.top) <= 0 + offsetY) {
                     mbaixo = true;
-                    player.style.top = parseInt(player.style.top || 0) - parseInt(pxMovement / 5) + 'px';
+                    player.style.top = parseInt(player.style.top || 0) - parseInt(pxMovementAuto) + 'px';
                 }
                 else {
                     mbaixo = false;
-                    player.style.top = parseInt(player.style.top || 0) - parseInt(pxMovement / 5) + 'px';
+                    player.style.top = parseInt(player.style.top || 0) - parseInt(pxMovementAuto) + 'px';
                     // blink();
                 }
-            }, 10);
+                await multiplayerMoveEmit();
+            }, 50);
         }
 
         async function blink() {

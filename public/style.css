@@ -5,6 +5,10 @@ body {
     font-size: 30px;
 }
 
+img {
+  -webkit-user-drag: none;
+}
+
 .borda {
     border: 5px solid white;
     border-radius: 10px;
@@ -24,7 +28,7 @@ body {
     width: 100px;
     height: 80px;
     display: relative;
-    position: relative;
+    position: fixed;
     z-index: 10;
 }
 

@@ -14,16 +14,17 @@ app.get('/', function (req, res) {
 });
 
 io.on('connection', (socket) => {
-  console.log('User Join:', socket.id);
+  console.log('>', socket.id);
 
-  io.emit('newPlayer', socket.id);
+  // io.emit('newPlayer', socket.id);
+  io.emit('newPlayer', Array.from(io.sockets.sockets.keys()));
 
   socket.on('multiplayerMove', (data) => {
       io.emit('multiplayerMove', data);
   });
 
   socket.on('disconnect', () => {
-      console.log('User Leave:', socket.id);
+      console.log('<', socket.id);
       io.emit('playerLeave', socket.id);
   });
 });
